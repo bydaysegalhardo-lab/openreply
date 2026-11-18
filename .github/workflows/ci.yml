@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   test:
     name: TypeScript checks
@@ -20,6 +23,16 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+
+      - name: Resolve compatible security updates (experimental branch only)
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/meta-unified-login'
+        run: |
+          set +e
+          npm audit fix --package-lock-only --ignore-scripts --no-force
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then exit "$rc"; fi
+          git diff --stat -- package.json package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -62,3 +75,16 @@ jobs:
           INSTAGRAM_APP_SECRET: test
           FACEBOOK_APP_SECRET: test
           WEBHOOK_VERIFY_TOKEN: test
+
+      - name: Save validated compatible security updates
+        if: success() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/meta-unified-login'
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch --detach "$HEAD_SHA"
+          git add -- package.json package-lock.json
+          git commit -m 'fix: apply compatible dependency security updates'
+          git push origin HEAD:refs/heads/feat/meta-unified-login
