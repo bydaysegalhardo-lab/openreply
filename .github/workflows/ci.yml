@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -84,7 +86,7 @@ jobs:
           if git diff --quiet -- package.json package-lock.json; then exit 0; fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git switch --detach "$HEAD_SHA"
+          test "$(git rev-parse HEAD)" = "$HEAD_SHA"
           git add -- package.json package-lock.json
           git commit -m 'fix: apply compatible dependency security updates'
           git push origin HEAD:refs/heads/feat/meta-unified-login
