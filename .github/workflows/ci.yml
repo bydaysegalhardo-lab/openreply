@@ -29,6 +29,8 @@ jobs:
       - name: Resolve compatible security updates (experimental branch only)
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/meta-unified-login'
         run: |
+          npm pkg set 'dependencies.nodemailer=^10.6.0' 'overrides.nodemailer=$nodemailer'
+          npm install --package-lock-only --ignore-scripts
           set +e
           npm audit fix --package-lock-only --ignore-scripts --no-force
           rc=$?
